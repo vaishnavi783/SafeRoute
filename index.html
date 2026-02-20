@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SafeRoute – Real-Time Safety Navigator</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Leaflet Routing Machine CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ── Header ── -->
+  <header class="app-header">
+    <div class="logo">
+      <span class="logo-icon">🛡️</span>
+      <span class="logo-text">SafeRoute</span>
+    </div>
+    <nav class="header-nav">
+      <button class="nav-btn active" id="nav-map" onclick="showPanel('map')">🗺️ Map</button>
+      <button class="nav-btn" id="nav-route" onclick="showPanel('route')">🔀 Route</button>
+      <button class="nav-btn" id="nav-report" onclick="showPanel('report')">📋 Report</button>
+      <button class="nav-btn" id="nav-share" onclick="showPanel('share')">📡 Share</button>
+    </nav>
+    <button class="sos-btn" id="sos-btn" onclick="triggerSOS()">🆘 SOS</button>
+  </header>
+
+  <!-- ── Main Layout ── -->
+  <main class="app-main">
+
+    <!-- ── Sidebar ── -->
+    <aside class="sidebar" id="sidebar">
+
+      <!-- Map Panel -->
+      <section class="panel active" id="panel-map">
+        <h2>Safety Zones</h2>
+        <p class="panel-desc">The map shows colour-coded safety zones and live incidents in your area.</p>
+
+        <div class="legend">
+          <div class="legend-item"><span class="dot safe"></span> Safe zone</div>
+          <div class="legend-item"><span class="dot moderate"></span> Moderate risk</div>
+          <div class="legend-item"><span class="dot unsafe"></span> Unsafe zone</div>
+          <div class="legend-item"><span class="dot incident"></span> Reported incident</div>
+        </div>
+
+        <div class="form-group">
+          <label for="zone-filter">Filter zones</label>
+          <select id="zone-filter" onchange="filterZones(this.value)">
+            <option value="all">All zones</option>
+            <option value="safe">Safe only</option>
+            <option value="moderate">Moderate only</option>
+            <option value="unsafe">Unsafe only</option>
+          </select>
+        </div>
+
+        <button class="btn btn-primary" onclick="locateMe()">📍 Find My Location</button>
+        <button class="btn btn-secondary" onclick="refreshZones()">🔄 Refresh Zones</button>
+
+        <div class="stats-grid" id="zone-stats">
+          <div class="stat-card safe-card">
+            <span class="stat-num" id="stat-safe">0</span>
+            <span class="stat-label">Safe Zones</span>
+          </div>
+          <div class="stat-card moderate-card">
+            <span class="stat-num" id="stat-moderate">0</span>
+            <span class="stat-label">Moderate</span>
+          </div>
+          <div class="stat-card unsafe-card">
+            <span class="stat-num" id="stat-unsafe">0</span>
+            <span class="stat-label">Unsafe</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Route Panel -->
+      <section class="panel" id="panel-route">
+        <h2>Safe Route Planner</h2>
+        <p class="panel-desc">Enter start and destination to get the safest route, avoiding high-risk areas.</p>
+
+        <div class="form-group">
+          <label for="route-start">Start location</label>
+          <div class="input-row">
+            <input type="text" id="route-start" placeholder="e.g. Times Square, New York" />
+            <button class="icon-btn" title="Use my location" onclick="useMyLocation('start')">📍</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="route-end">Destination</label>
+          <div class="input-row">
+            <input type="text" id="route-end" placeholder="e.g. Central Park, New York" />
+            <button class="icon-btn" title="Use my location" onclick="useMyLocation('end')">📍</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="route-mode">Travel mode</label>
+          <select id="route-mode">
+            <option value="foot-walking">🚶 Walking</option>
+            <option value="driving-car">🚗 Driving</option>
+            <option value="cycling-regular">🚴 Cycling</option>
+          </select>
+        </div>
+
+        <div class="checkbox-row">
+          <input type="checkbox" id="avoid-unsafe" checked />
+          <label for="avoid-unsafe">Avoid unsafe zones</label>
+        </div>
+
+        <button class="btn btn-primary" onclick="planRoute()">🔀 Find Safest Route</button>
+        <button class="btn btn-secondary" onclick="clearRoute()">✖ Clear Route</button>
+
+        <div id="route-info" class="route-info hidden"></div>
+      </section>
+
+      <!-- Report Panel -->
+      <section class="panel" id="panel-report">
+        <h2>Report an Incident</h2>
+        <p class="panel-desc">All reports are <strong>completely anonymous</strong>. Help keep your community safe.</p>
+
+        <div class="form-group">
+          <label for="incident-type">Incident type</label>
+          <select id="incident-type">
+            <option value="theft">🔓 Theft / Robbery</option>
+            <option value="assault">⚠️ Assault / Violence</option>
+            <option value="harassment">🚫 Harassment</option>
+            <option value="suspicious">👁️ Suspicious Activity</option>
+            <option value="accident">🚧 Accident / Hazard</option>
+            <option value="other">❓ Other</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="incident-desc">Description <span class="optional">(optional)</span></label>
+          <textarea id="incident-desc" rows="3" placeholder="Briefly describe what happened…"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Location</label>
+          <div class="location-display" id="report-location-display">
+            <span id="report-location-text">Click the map to pin a location</span>
+          </div>
+          <button class="btn btn-secondary" onclick="useMyLocationForReport()">📍 Use My Location</button>
+        </div>
+
+        <div class="form-group">
+          <label for="incident-time">When did it happen?</label>
+          <select id="incident-time">
+            <option value="now">Just now</option>
+            <option value="1h">Within the last hour</option>
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+          </select>
+        </div>
+
+        <button class="btn btn-primary" onclick="submitReport()">📋 Submit Report Anonymously</button>
+
+        <div id="report-success" class="alert alert-success hidden">
+          ✅ Report submitted successfully. Thank you for keeping the community safe!
+        </div>
+      </section>
+
+      <!-- Share Panel -->
+      <section class="panel" id="panel-share">
+        <h2>Share My Location</h2>
+        <p class="panel-desc">Share your real-time location with trusted contacts so they can track your journey.</p>
+
+        <div id="share-status" class="share-status">
+          <div class="share-indicator inactive" id="share-indicator"></div>
+          <span id="share-status-text">Location sharing is off</span>
+        </div>
+
+        <div class="form-group">
+          <label for="share-name">Your name <span class="optional">(shown to contacts)</span></label>
+          <input type="text" id="share-name" placeholder="e.g. Alex" maxlength="30" />
+        </div>
+
+        <div class="form-group">
+          <label for="share-duration">Share for</label>
+          <select id="share-duration">
+            <option value="15">15 minutes</option>
+            <option value="30" selected>30 minutes</option>
+            <option value="60">1 hour</option>
+            <option value="120">2 hours</option>
+            <option value="0">Until I stop</option>
+          </select>
+        </div>
+
+        <button class="btn btn-primary" id="share-toggle-btn" onclick="toggleSharing()">📡 Start Sharing</button>
+
+        <div id="share-link-box" class="share-link-box hidden">
+          <label>Share this link with your contacts:</label>
+          <div class="input-row">
+            <input type="text" id="share-link" readonly />
+            <button class="icon-btn" onclick="copyShareLink()" title="Copy link">📋</button>
+          </div>
+          <div class="share-actions">
+            <button class="btn btn-secondary" onclick="shareViaWhatsApp()">💬 WhatsApp</button>
+            <button class="btn btn-secondary" onclick="shareViaSMS()">📱 SMS</button>
+          </div>
+          <p class="share-note" id="share-expires"></p>
+        </div>
+
+        <div id="share-history" class="share-history">
+          <h3>Recent Shares</h3>
+          <ul id="share-history-list">
+            <li class="empty-state">No recent shares</li>
+          </ul>
+        </div>
+      </section>
+
+    </aside>
+
+    <!-- ── Map ── -->
+    <div id="map"></div>
+
+  </main>
+
+  <!-- ── SOS Modal ── -->
+  <div class="modal-overlay hidden" id="sos-modal">
+    <div class="modal">
+      <div class="modal-header sos-header">
+        <span>🆘 SOS Alert</span>
+        <button class="modal-close" onclick="closeSOS()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="sos-countdown" id="sos-countdown">
+          <div class="sos-ring">
+            <span id="sos-seconds">5</span>
+          </div>
+          <p>Alert will be sent in <strong id="sos-seconds-text">5</strong> seconds</p>
+          <p class="sos-sub">Press <em>Cancel</em> to stop</p>
+        </div>
+        <div class="sos-sent hidden" id="sos-sent">
+          <div class="sos-sent-icon">✅</div>
+          <h3>SOS Alert Sent!</h3>
+          <p id="sos-location-sent"></p>
+          <p>Emergency contacts and nearby responders have been notified with your location.</p>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger" id="sos-cancel-btn" onclick="cancelSOS()">Cancel</button>
+        <button class="btn btn-primary hidden" id="sos-close-btn" onclick="closeSOS()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Toast Notification ── -->
+  <div class="toast hidden" id="toast"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Leaflet Routing Machine -->
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
+
+  <script src="js/zones.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
