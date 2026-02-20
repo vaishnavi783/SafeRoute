@@ -1,251 +1,143 @@
-let map;
-let currentUserLocation;
-let destinationLatLng;
-let routeLayer;
-let watchId;
-let liveMarker;
-let isTracking = false;
-let clickedLocation = null;
+<!DOCTYPE html>
+<html>
+<head>
+  <title>SafeRoute - AI Smart Navigation</title>
 
-const ORS_API_KEY = "eyJvcmciOiI1YjNjZTM1OTc4NTExMTAwMDFjZjYyNDgiLCJpZCI6Ijk5M2RhODBjMmMzYzQxNWY5MDE4MjgzMTdiY2YyN2QyIiwiaCI6Im11cm11cjY0In0=";
+  <link rel="stylesheet"
+        href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
-
-// ================= INIT =================
-window.onload = function () {
-
-  const defaultLoc = [8.5241, 76.9366];
-
-  map = L.map("map").setView(defaultLoc, 13);
-
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png")
-    .addTo(map);
-
-  navigator.geolocation.getCurrentPosition(
-    pos => {
-
-      currentUserLocation = L.latLng(
-        pos.coords.latitude,
-        pos.coords.longitude
-      );
-
-      map.setView(currentUserLocation, 13);
-
-      L.marker(currentUserLocation)
-        .addTo(map)
-        .bindPopup("You are here")
-        .openPopup();
-    },
-    () => {
-      currentUserLocation = L.latLng(defaultLoc);
-    }
-  );
-
-  enableIncidentReporting();
-};
-
-
-// ================= INCIDENT REPORT =================
-function enableIncidentReporting() {
-
-  map.on("click", function (e) {
-
-    clickedLocation = e.latlng;
-
-    document.getElementById("incidentForm").style.display = "block";
-    document.getElementById("overlay").style.display = "block";
-
-    map.dragging.disable();
-    map.scrollWheelZoom.disable();
-  });
-}
-
-function closeIncidentForm() {
-
-  document.getElementById("incidentForm").style.display = "none";
-  document.getElementById("overlay").style.display = "none";
-
-  map.dragging.enable();
-  map.scrollWheelZoom.enable();
-}
-
-function submitIncident() {
-
-  if (!clickedLocation) {
-    alert("Click on map first.");
-    return;
-  }
-
-  const category =
-    document.getElementById("incidentCategory").value;
-
-  const description =
-    document.getElementById("incidentDescription").value;
-
-  if (!description.trim()) {
-    alert("Please enter description.");
-    return;
-  }
-
-  db.collection("incidents").add({
-    lat: clickedLocation.lat,
-    lng: clickedLocation.lng,
-    category,
-    description,
-    time: new Date()
-  })
-  .then(() => {
-    alert("Incident reported!");
-    document.getElementById("incidentDescription").value = "";
-    closeIncidentForm();
-  })
-  .catch(err => {
-    console.error(err);
-    alert("Failed to report.");
-  });
-}
-
-
-// ================= SEARCH =================
-function searchLocation() {
-
-  const query =
-    document.getElementById("locationSearch").value;
-
-  if (!query) return;
-
-  fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}`)
-    .then(res => res.json())
-    .then(data => {
-
-      if (!data.length) {
-        alert("Location not found");
-        return;
-      }
-
-      destinationLatLng =
-        L.latLng(data[0].lat, data[0].lon);
-
-      map.setView(destinationLatLng, 15);
-
-      L.marker(destinationLatLng)
-        .addTo(map)
-        .bindPopup("Destination")
-        .openPopup();
-    });
-}
-
-
-// ================= SAFE ROUTE (FIXED VERSION) =================
-function getSafeRoute() {
-
-  if (!currentUserLocation || !destinationLatLng)
-    return alert("Search destination first.");
-
-  fetch("https://api.openrouteservice.org/v2/directions/driving-car/geojson", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": ORS_API_KEY
-    },
-    body: JSON.stringify({
-      coordinates: [
-        [currentUserLocation.lng, currentUserLocation.lat],
-        [destinationLatLng.lng, destinationLatLng.lat]
-      ]
-    })
-  })
-  .then(res => res.json())
-  .then(data => {
-
-    console.log("Route response:", data);
-
-    if (!data.features || !data.features.length) {
-      alert("No route returned.");
-      return;
+  <style>
+    html, body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial;
+      height: 100%;
     }
 
-    const coords =
-      data.features[0].geometry.coordinates;
+    #topBar {
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-bottom:10px;
+    }
+   #safetyBox {
+     margin-bottom:10px;
+     padding:10px;
+     border-radius:6px;
+     background:#f2f2f2;
+     font-weight:bold;
+    }
+    input, select, textarea {
+      padding:8px;
+      border-radius:6px;
+      border:1px solid #ccc;
+      width:100%;
+      box-sizing:border-box;
+    }
 
-    const latLngs =
-      coords.map(c => [c[1], c[0]]);
+    button {
+      padding:8px 12px;
+      border:none;
+      border-radius:6px;
+      background:#2c7be5;
+      color:white;
+      cursor:pointer;
+    }
 
-    if (routeLayer)
-      map.removeLayer(routeLayer);
+    #sosBtn {
+      background:red;
+      font-weight:bold;
+    }
 
-    routeLayer = L.polyline(latLngs, {
-      color: "green",
-      weight: 6
-    }).addTo(map);
+    #map {
+      height:70vh;
+      width:100%;
+      border-radius:8px;
+    }
 
-    map.fitBounds(routeLayer.getBounds());
-  })
-  .catch(err => {
-    console.error("Routing error:", err);
-    alert("Routing failed. Check console.");
-  });
-}
+    #overlay {
+      display:none;
+      position:fixed;
+      width:100%;
+      height:100%;
+      background:rgba(0,0,0,0.4);
+      top:0;
+      left:0;
+      z-index:900;
+    }
 
+    #incidentForm {
+      display:none;
+      position:fixed;
+      top:50%;
+      left:50%;
+      transform:translate(-50%,-50%);
+      background:white;
+      padding:20px;
+      border-radius:8px;
+      box-shadow:0 0 20px rgba(0,0,0,0.3);
+      z-index:1000;
+      width:320px;
+    }
 
-// ================= LIVE =================
-function toggleLiveTracking() {
+    #incidentForm textarea {
+      resize:none;
+    }
 
-  if (!isTracking) {
+  </style>
+</head>
 
-    watchId =
-      navigator.geolocation.watchPosition(pos => {
+<body>
 
-        currentUserLocation =
-          L.latLng(pos.coords.latitude,
-                   pos.coords.longitude);
+<h2>SafeRoute - AI Smart Navigation</h2>
 
-        if (liveMarker)
-          liveMarker.setLatLng(currentUserLocation);
-        else
-          liveMarker =
-            L.marker(currentUserLocation)
-             .addTo(map);
-      });
+<div id="topBar">
+  <input type="text" id="locationSearch" placeholder="Search destination">
+  <button onclick="searchLocation()">Search</button>
+  <button onclick="getSafeRoute()">🧭 Get Safe Route</button>
+  <button onclick="toggleLiveTracking()">📍 Live</button>
+  <button id="sosBtn" onclick="sendSOS()">🚨 SOS</button>
+</div>
+<div id="safetyBox">
+  Safety Score: <span id="safetyScore">Calculating...</span>
+</div>
 
-    isTracking = true;
+<div id="map"></div>
 
-  } else {
+<div id="overlay"></div>
 
-    navigator.geolocation.clearWatch(watchId);
+<div id="incidentForm">
+  <h3>Report Incident</h3>
+  <select id="incidentCategory">
+    <option value="Accident">🚗 Accident</option>
+    <option value="Harassment">🚨 Harassment</option>
+    <option value="Theft">🛑 Theft</option>
+    <option value="Road Hazard">⚠ Road Hazard</option>
+    <option value="Other">❓ Other</option>
+  </select>
+  <br><br>
+  <textarea id="incidentDescription"
+            rows="3"
+            placeholder="Describe incident"></textarea>
+  <br><br>
+  <button onclick="submitIncident()">Submit</button>
+  <button onclick="closeIncidentForm()" style="background:gray;">
+    Cancel
+  </button>
+</div>
 
-    if (liveMarker)
-      map.removeLayer(liveMarker);
+<audio id="alertSound"
+src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg"
+preload="auto"></audio>
 
-    isTracking = false;
-  }
-}
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-polylineencoded/Polyline.encoded.js"></script>
 
+<script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore-compat.js"></script>
 
-// ================= SOS =================
-function sendSOS() {
+<script src="firebase-config.js"></script>
+<script src="script.js"></script>
 
-  if (!currentUserLocation)
-    return alert("Location not ready.");
-
-  const sound =
-    document.getElementById("alertSound");
-
-  sound.loop = true;
-
-  sound.play().catch(err => console.log(err));
-
-  setTimeout(() => {
-    sound.pause();
-    sound.currentTime = 0;
-  }, 10000);
-
-  const message =
-   `🚨 EMERGENCY SOS ALERT 🚨
-Location:
-https://www.google.com/maps?q=${currentUserLocation.lat},${currentUserLocation.lng}`;
-
-  window.open(
-   `https://wa.me/918547308589?text=${encodeURIComponent(message)}`,
-   "_blank"
-  );
-}
+</body>
+</html>
