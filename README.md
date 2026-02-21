@@ -105,3 +105,41 @@ Clone the repository:
 
 ![Incident Report](screenshots/incident.png)
 *Incident reporting interface*
+##Architecture
+User Browser
+    ↓
+Leaflet Frontend
+    ↓
+OpenRouteService API (Routing)
+    ↓
+Firebase Firestore (Incidents)
+    ↓
+AI Safety Scoring Engine
+##Application Window
+
+User opens SafeRoute
+
+Location detected
+
+User searches destination
+
+Safe route generated
+
+AI calculates safety score
+
+Incidents affect route risk
+
+SOS available anytime
+## Team Members
+Arya Krishna S
+
+Frontend development
+
+AI safety scoring logic
+
+Routing integration
+
+G Vaishnavi
+
+Backend development
+Firebase integration
