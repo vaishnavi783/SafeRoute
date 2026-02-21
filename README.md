@@ -13,7 +13,7 @@
 - Teammate Name – College  
 
 ### 🌐 Hosted Project Link
-🔗 https://your-live-link.com  
+🔗 (https://clinquant-beignet-7a5ffa.netlify.app/) 
 
 ---
 
