@@ -96,7 +96,7 @@ SafeRoute:
 Clone the repository:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/SafeRoute-AI.git
+[git clone https://github.com/YOUR_USERNAME/SafeRoute-AI.git](https://github.com/vaishnavi783/SafeRoute.git)
 ![Home Screen](screenshots/home.png)
 *Live tracking and safety score display*
 
