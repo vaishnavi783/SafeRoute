@@ -9,8 +9,8 @@
 **Team Name:** Your Team Name  
 
 ### 👥 Team Members
-- Arya Krishna S – Your College  
-- Teammate Name – College  
+- Arya Krishna S – LBS 
+- G VAISHNAVI – LBS 
 
 ### 🌐 Hosted Project Link
 🔗 (https://clinquant-beignet-7a5ffa.netlify.app/) 
@@ -92,20 +92,7 @@ SafeRoute:
 ## ⚙ Implementation
 
 ### Installation
-
-Clone the repository:
-
-```bash
-[git clone https://github.com/vaishnavi783/SafeRoute.git]
-![Home Screen](screenshots/home.png)
-*Live tracking and safety score display*
-
-![Safe Route](screenshots/route.png)
-*Safer route generated*
-
-![Incident Report](screenshots/incident.png)
-*Incident reporting interface*
-##Architecture
+## Architecture
 User Browser
     ↓
 Leaflet Frontend
@@ -115,7 +102,7 @@ OpenRouteService API (Routing)
 Firebase Firestore (Incidents)
     ↓
 AI Safety Scoring Engine
-##Application Window
+## Application Window
 
 User opens SafeRoute
 
